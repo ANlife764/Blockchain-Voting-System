@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Voting System - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🗳️ Blockchain Voting System</h1>
+            <p class="subtitle">Team Nous - Building Trust, Block by Block</p>
+            <div class="status-bar">
+                <span id="connection-status" class="status-offline">🔴 Offline</span>
+                <span id="last-update">Last update: Never</span>
+                <button id="refresh-btn" class="btn-primary">🔄 Refresh</button>
+            </div>
+        </header>
+
+        <!-- Statistics Section -->
+        <section class="stats-section">
+            <h2>📊 Voting Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Blocks</h3>
+                    <span id="total-blocks" class="stat-number">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Votes</h3>
+                    <span id="total-votes" class="stat-number">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Chain Status</h3>
+                    <span id="chain-status" class="status-valid">✓ Valid</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Latest Block</h3>
+                    <span id="latest-block" class="stat-number">#0</span>
+                </div>
+            </div>
+
+            <!-- Candidate Results -->
+            <div class="candidate-results">
+                <h3>🎯 Candidate Results</h3>
+                <div id="candidate-votes" class="votes-container">
+                    <!-- Candidate votes will be populated here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Blockchain Explorer -->
+        <section class="blockchain-section">
+            <div class="section-header">
+                <h2>⛓️ Blockchain Explorer</h2>
+                <div class="controls">
+                    <input type="text" id="search-block" placeholder="Search block..." class="search-input">
+                    <button id="verify-btn" class="btn-secondary">🔍 Verify Chain</button>
+                </div>
+            </div>
+
+            <!-- Blockchain Visualization -->
+            <div class="blockchain-visual">
+                <div id="blockchain-container" class="blocks-container">
+                    <!-- Blocks will be populated here -->
+                </div>
+            </div>
+
+            <!-- Block Details -->
+            <div id="block-details" class="block-details hidden">
+                <h3>Block Details</h3>
+                <div class="details-content">
+                    <pre id="block-json"></pre>
+                </div>
+                <button id="close-details" class="btn-secondary">Close</button>
+            </div>
+        </section>
+
+        <!-- Verification Results -->
+        <section id="verification-results" class="verification-section hidden">
+            <h3>🔒 Chain Verification</h3>
+            <div id="verification-content"></div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
