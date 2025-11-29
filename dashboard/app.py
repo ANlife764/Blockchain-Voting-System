@@ -5,12 +5,26 @@ from datetime import datetime, timedelta
 import logging
 import time
 from collections import defaultdict
+from io import BytesIO
 
 app = Flask(__name__)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Try to import ReportLab for PDF generation
+try:
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
+    logger.warning("ReportLab not available. PDF generation will be limited. Install with: pip install reportlab")
 
 class BlockchainManager:
     def __init__(self, blockchain_file='../blockchain.json'):
@@ -229,15 +243,200 @@ def get_block(block_index):
         return jsonify(blocks[block_index])
     return jsonify({'error': 'Block not found'}), 404
 
+def generate_audit_pdf(blocks, stats):
+    """Generate PDF audit report"""
+    buffer = BytesIO()
+    
+    if REPORTLAB_AVAILABLE:
+        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#2563eb'),
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
+        story.append(Paragraph("Blockchain Voting System", title_style))
+        story.append(Paragraph("Election Audit Report", styles['Heading2']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Report metadata
+        report_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
+        story.append(Paragraph(f"<b>Report Generated:</b> {report_date}", styles['Normal']))
+        story.append(Paragraph(f"<b>Audit ID:</b> audit_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}", styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Executive Summary
+        story.append(Paragraph("Executive Summary", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        summary_data = [
+            ['Metric', 'Value'],
+            ['Total Blocks', str(stats.get('total_blocks', 0))],
+            ['Total Votes Cast', str(stats.get('total_votes', 0))],
+            ['Verified Blocks', str(stats.get('verified_blocks', 0))],
+            ['Chain Integrity', f"{stats.get('chain_integrity', 0)}%"],
+            ['Participation Rate', f"{stats.get('participation_rate', 0)}%"],
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+        story.append(summary_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Candidate Results
+        story.append(Paragraph("Candidate Results", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        candidate_results = stats.get('candidate_results', {})
+        if candidate_results:
+            candidate_data = [['Candidate', 'Votes', 'Percentage']]
+            for candidate, data in sorted(candidate_results.items(), key=lambda x: x[1]['count'], reverse=True):
+                candidate_data.append([
+                    candidate,
+                    str(data.get('count', 0)),
+                    f"{data.get('percentage', 0)}%"
+                ])
+            
+            candidate_table = Table(candidate_data, colWidths=[3*inch, 1.5*inch, 1.5*inch])
+            candidate_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#10b981')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+            ]))
+            story.append(candidate_table)
+        else:
+            story.append(Paragraph("No candidate results available.", styles['Normal']))
+        
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Voting Period
+        voting_period = stats.get('voting_period', {})
+        if voting_period:
+            story.append(Paragraph("Voting Period", styles['Heading2']))
+            story.append(Spacer(1, 0.1*inch))
+            story.append(Paragraph(f"<b>Start:</b> {voting_period.get('start', 'N/A')}", styles['Normal']))
+            story.append(Paragraph(f"<b>End:</b> {voting_period.get('end', 'N/A')}", styles['Normal']))
+            story.append(Paragraph(f"<b>Time Remaining:</b> {voting_period.get('remaining', 'N/A')}", styles['Normal']))
+            story.append(Spacer(1, 0.3*inch))
+        
+        # Blockchain Verification Status
+        story.append(Paragraph("Blockchain Verification Status", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        chain_integrity = stats.get('chain_integrity', 0)
+        if chain_integrity == 100:
+            status_text = "✅ All blocks verified and chain integrity confirmed"
+            status_color = colors.HexColor('#10b981')
+        else:
+            status_text = f"⚠️ Chain integrity: {chain_integrity}% - Verification in progress"
+            status_color = colors.HexColor('#f59e0b')
+        
+        status_style = ParagraphStyle(
+            'StatusStyle',
+            parent=styles['Normal'],
+            fontSize=12,
+            textColor=status_color,
+            spaceAfter=12
+        )
+        story.append(Paragraph(status_text, status_style))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Recent Blocks Summary
+        story.append(Paragraph("Recent Blocks Summary", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        # Show last 10 blocks
+        recent_blocks = blocks[-10:] if len(blocks) > 10 else blocks
+        blocks_data = [['Block #', 'Data', 'Status']]
+        for block in recent_blocks:
+            is_verified = block.get('hash', '').startswith('000')
+            status = '✅ Verified' if is_verified else '⏳ Pending'
+            data = block.get('data', '')[:50] + '...' if len(block.get('data', '')) > 50 else block.get('data', '')
+            blocks_data.append([
+                str(block.get('index', 0)),
+                data,
+                status
+            ])
+        
+        blocks_table = Table(blocks_data, colWidths=[1*inch, 3.5*inch, 1.5*inch])
+        blocks_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6366f1')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+        story.append(blocks_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Footer
+        story.append(Spacer(1, 0.2*inch))
+        footer_style = ParagraphStyle(
+            'FooterStyle',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.grey,
+            alignment=TA_CENTER
+        )
+        story.append(Paragraph("This is an automated audit report generated by the Blockchain Voting System.", footer_style))
+        story.append(Paragraph("Team Nous - Building Trust, Block by Block", footer_style))
+        
+        # Build PDF
+        doc.build(story)
+    else:
+        # Fallback: Create a simple text-based PDF-like response
+        buffer.write(b"PDF generation requires ReportLab library. Please install it using: pip install reportlab")
+    
+    buffer.seek(0)
+    return buffer
+
 @app.route('/api/export/audit')
 def export_audit_report():
-    """API endpoint to export audit report"""
-    # In a real implementation, this would generate a PDF
-    return jsonify({
-        'message': 'Audit report generated successfully',
-        'filename': f"election_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-        'url': '/api/download/audit'
-    })
+    """API endpoint to export audit report as PDF"""
+    try:
+        blocks = blockchain_manager.load_blockchain()
+        stats = blockchain_manager.get_statistics(blocks)
+        
+        pdf_buffer = generate_audit_pdf(blocks, stats)
+        filename = f"election_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error generating audit report: {e}")
+        return jsonify({'error': f'Failed to generate audit report: {str(e)}'}), 500
 
 if __name__ == '__main__':
     print("🚀 Blockchain Voting Dashboard Starting...")
