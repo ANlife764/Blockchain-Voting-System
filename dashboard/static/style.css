@@ -22,10 +22,11 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--background);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     color: var(--text-primary);
     line-height: 1.6;
+    min-height: 100vh;
 }
 
 .container {
@@ -674,4 +675,252 @@ body {
 /* Ensure cards have proper spacing */
 .card + .card {
     margin-top: 0;
+}
+
+/* Stats Section */
+.stats-section {
+    margin-bottom: 24px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-card h3 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-number {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary);
+    display: block;
+}
+
+.status-valid {
+    color: var(--success);
+    font-weight: 600;
+    font-size: 18px;
+}
+
+/* Blockchain Section */
+.blockchain-section {
+    margin-bottom: 24px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.section-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.blockchain-visual {
+    margin-top: 20px;
+}
+
+.blocks-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Block Details */
+.block-details {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+.block-details h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+.details-content {
+    background: var(--background);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+}
+
+.details-content pre {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Verification Section */
+.verification-section {
+    margin-top: 24px;
+}
+
+.verification-section.hidden {
+    display: none;
+}
+
+/* Votes Container */
+.votes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.candidate-results {
+    margin-top: 20px;
+}
+
+.candidate-results h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+/* Status Bar (old style - keeping for compatibility) */
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.status-offline {
+    color: var(--error);
+    font-weight: 600;
+}
+
+.status-online {
+    color: var(--success);
+    font-weight: 600;
+}
+
+/* Enhanced animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Smooth transitions for all interactive elements */
+button, .tool-btn, .btn {
+    transition: all 0.2s ease;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Enhanced scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+}
+
+/* Loading states */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* Enhanced button styles */
+.btn {
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+/* Improved search input */
+.search-input {
+    flex: 1;
+    min-width: 200px;
+    transition: all 0.2s ease;
+}
+
+.search-input:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }

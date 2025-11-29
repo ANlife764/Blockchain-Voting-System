@@ -32,6 +32,14 @@ class BlockchainDashboard {
                 this.verifyBlockchain();
             });
         }
+        
+        // Also check for verify-btn (alternative ID)
+        const verifyBtnAlt = document.getElementById('verify-btn');
+        if (verifyBtnAlt) {
+            verifyBtnAlt.addEventListener('click', () => {
+                this.verifyBlockchain();
+            });
+        }
 
         // Export audit button
         const exportBtn = document.getElementById('export-audit-btn');
@@ -113,22 +121,46 @@ class BlockchainDashboard {
     updateSystemStatus(status) {
         console.log('Updating system status:', status);
         
-        const elements = {
-            'system-status': status.online ? '🟢 ONLINE' : '🔴 OFFLINE',
-            'last-updated': `Last Verified: ${status.lastUpdateAgo}`,
-            'security-status': status.securityStatus,
-            'chain-integrity': status.chainIntegrity,
-            'total-votes-cast': (status.blockHeight - 1).toLocaleString(),
-            'verified-blocks': status.verifiedBlocks.toLocaleString()
-        };
-
-        for (const [id, value] of Object.entries(elements)) {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = value;
-            } else {
-                console.warn(`Element #${id} not found`);
-            }
+        // Update connection status
+        const connectionStatus = document.getElementById('connection-status');
+        if (connectionStatus) {
+            connectionStatus.textContent = status.online ? 'Online' : 'Offline';
+        }
+        
+        // Update system status indicator
+        const systemStatus = document.getElementById('system-status');
+        if (systemStatus) {
+            systemStatus.textContent = status.online ? '🟢 ONLINE' : '🔴 OFFLINE';
+        }
+        
+        // Update last updated
+        const lastUpdated = document.getElementById('last-updated');
+        if (lastUpdated) {
+            lastUpdated.textContent = status.lastUpdateAgo || 'Just now';
+        }
+        
+        // Update security status
+        const securityStatus = document.getElementById('security-status');
+        if (securityStatus) {
+            securityStatus.textContent = status.securityStatus || 'All Blocks Verified';
+        }
+        
+        // Update chain integrity
+        const chainIntegrity = document.getElementById('chain-integrity');
+        if (chainIntegrity) {
+            chainIntegrity.textContent = status.chainIntegrity || '100%';
+        }
+        
+        // Update total votes cast
+        const totalVotesCast = document.getElementById('total-votes-cast');
+        if (totalVotesCast) {
+            totalVotesCast.textContent = ((status.blockHeight || 1) - 1).toLocaleString();
+        }
+        
+        // Update verified blocks
+        const verifiedBlocks = document.getElementById('verified-blocks');
+        if (verifiedBlocks) {
+            verifiedBlocks.textContent = (status.verifiedBlocks || 0).toLocaleString();
         }
     }
 
@@ -168,6 +200,14 @@ class BlockchainDashboard {
 
         // Update candidate results
         this.renderCandidateResults(statistics.candidate_results || {});
+        
+        // Update latest block
+        if (statistics.latest_block) {
+            const latestBlock = document.getElementById('latest-block');
+            if (latestBlock) {
+                latestBlock.textContent = `#${statistics.latest_block.index || 0}`;
+            }
+        }
     }
 
     renderCandidateResults(candidateResults) {
@@ -180,25 +220,44 @@ class BlockchainDashboard {
         console.log('Rendering candidate results:', candidateResults);
 
         if (Object.keys(candidateResults).length === 0) {
-            container.innerHTML = '<p class="text-center">No votes recorded yet</p>';
+            container.innerHTML = '<p class="text-center" style="padding: 20px; color: var(--text-secondary);">No votes recorded yet</p>';
             return;
         }
 
-        container.innerHTML = Object.entries(candidateResults)
-            .map(([candidate, data]) => {
+        // Sort by vote count (descending)
+        const sortedCandidates = Object.entries(candidateResults)
+            .sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
+
+        container.innerHTML = sortedCandidates
+            .map(([candidate, data], index) => {
                 const percentage = data.percentage || 0;
                 const count = data.count || 0;
+                const isWinner = index === 0 && count > 0;
+                
+                // Different colors for different candidates
+                const colors = [
+                    'linear-gradient(90deg, #2563eb, #1d4ed8)',
+                    'linear-gradient(90deg, #10b981, #059669)',
+                    'linear-gradient(90deg, #f59e0b, #d97706)',
+                    'linear-gradient(90deg, #8b5cf6, #7c3aed)',
+                    'linear-gradient(90deg, #ec4899, #db2777)'
+                ];
+                const color = colors[index % colors.length];
                 
                 return `
-                    <div class="candidate-result">
-                        <div class="candidate-info">
-                            <div class="candidate-name">${this.escapeHtml(candidate)}</div>
-                            <div class="candidate-stats">
-                                <span>${percentage}%</span>
-                                <span>(${count.toLocaleString()} votes)</span>
+                    <div class="candidate-result" style="${isWinner ? 'background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 16px; border-radius: 12px; border: 2px solid #10b981;' : ''}">
+                        <div class="candidate-info" style="flex: 1;">
+                            <div class="candidate-name" style="display: flex; align-items: center; gap: 8px;">
+                                ${isWinner ? '<span style="font-size: 20px;">🏆</span>' : ''}
+                                <span>${this.escapeHtml(candidate)}</span>
+                                ${isWinner ? '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">LEADING</span>' : ''}
                             </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${percentage}%"></div>
+                            <div class="candidate-stats" style="margin: 8px 0;">
+                                <span style="font-weight: 600; color: var(--primary);">${percentage}%</span>
+                                <span style="color: var(--text-secondary);">(${count.toLocaleString()} ${count === 1 ? 'vote' : 'votes'})</span>
+                            </div>
+                            <div class="progress-bar" style="margin-top: 12px;">
+                                <div class="progress-fill" style="width: ${percentage}%; background: ${color};"></div>
                             </div>
                         </div>
                     </div>
@@ -214,22 +273,31 @@ class BlockchainDashboard {
         console.log('Updating recent activity:', activity);
 
         if (!activity || activity.length === 0) {
-            container.innerHTML = '<p class="text-center">No recent activity</p>';
+            container.innerHTML = '<p class="text-center" style="padding: 20px; color: var(--text-secondary);">No recent activity</p>';
             return;
         }
 
-        container.innerHTML = activity.map(item => `
-            <div class="activity-item">
-                <span class="activity-time">${item.time || 'Unknown'}</span>
-                <span class="activity-details">Block #${item.index || '?'}</span>
-                <span class="activity-status">${item.status === 'Verified' ? '✅' : '⏳'} ${item.status || 'Unknown'}</span>
-            </div>
-        `).join('');
+        container.innerHTML = activity.map((item, index) => {
+            const isVerified = item.status === 'Verified';
+            return `
+                <div class="activity-item" style="animation: fadeIn 0.3s ease ${index * 0.1}s both;">
+                    <span class="activity-time" style="font-weight: 600; color: var(--text-primary);">${item.time || 'Unknown'}</span>
+                    <span class="activity-details" style="flex: 1;">Block #${item.index || '?'} was ${isVerified ? 'verified' : 'added'}</span>
+                    <span class="activity-status" style="background: ${isVerified ? '#dcfce7' : '#fef3c7'}; color: ${isVerified ? '#10b981' : '#f59e0b'}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                        ${isVerified ? '✅ Verified' : '⏳ Pending'}
+                    </span>
+                </div>
+            `;
+        }).join('');
     }
 
     renderCurrentBlock() {
         if (!this.currentBlocks || this.currentBlocks.length === 0) {
             console.warn('No blocks available to render');
+            const container = document.getElementById('block-explorer');
+            if (container) {
+                container.innerHTML = '<div class="block-visual"><p style="text-align: center; padding: 40px; color: var(--text-secondary);">No blocks available</p></div>';
+            }
             return;
         }
 
@@ -244,47 +312,65 @@ class BlockchainDashboard {
 
         const isGenesis = this.currentBlockIndex === 0;
         const timestamp = new Date(block.timestamp * 1000).toLocaleString();
+        const isVerified = block.hash && block.hash.startsWith('000');
+        const blockNumber = this.currentBlockIndex + 1;
+        const totalBlocks = this.currentBlocks.length;
         
         container.innerHTML = `
-            <div class="block-visual">
-                <div class="block-header">
-                    <div class="block-title">BLOCK #${block.index}</div>
-                    <div class="block-status">✅ VERIFIED & SIGNED</div>
+            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="color: var(--text-secondary); font-size: 14px;">Block</span>
+                    <span style="font-weight: 600; font-size: 18px;">${blockNumber} / ${totalBlocks}</span>
                 </div>
-                
-                <div class="block-data">
-                    <div class="data-label">Data</div>
-                    <div class="data-value">${this.escapeHtml(block.data)}</div>
-                </div>
-                
-                <div class="block-data">
-                    <div class="data-label">Hash</div>
-                    <div class="data-value">${block.hash}</div>
-                </div>
-                
-                <div class="block-data">
-                    <div class="data-label">Previous Hash</div>
-                    <div class="data-value">${block.prevHash || 'Genesis Block'}</div>
-                </div>
-                
-                <div class="block-data">
-                    <div class="data-label">Timestamp</div>
-                    <div class="data-value">${timestamp}</div>
-                </div>
-                
-                <div class="block-data">
-                    <div class="data-label">Nonce</div>
-                    <div class="data-value">${block.nonce.toLocaleString()}</div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="prev-block-btn" class="btn btn-secondary" ${this.currentBlockIndex === 0 ? 'disabled' : ''} style="min-width: 100px;">
+                        ← Previous
+                    </button>
+                    <button id="next-block-btn" class="btn btn-secondary" ${this.currentBlockIndex === this.currentBlocks.length - 1 ? 'disabled' : ''} style="min-width: 100px;">
+                        Next →
+                    </button>
                 </div>
             </div>
             
-            <div class="btn-group">
-                <button id="prev-block-btn" class="btn btn-secondary" ${this.currentBlockIndex === 0 ? 'disabled' : ''}>
-                    ← Previous
-                </button>
-                <button id="next-block-btn" class="btn btn-secondary" ${this.currentBlockIndex === this.currentBlocks.length - 1 ? 'disabled' : ''}>
-                    Next →
-                </button>
+            <div class="block-visual" style="background: ${isGenesis ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : isVerified ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' : 'var(--surface)'}; border: 2px solid ${isGenesis ? '#f59e0b' : isVerified ? '#10b981' : 'var(--border)'};">
+                <div class="block-header">
+                    <div class="block-title" style="display: flex; align-items: center; gap: 8px;">
+                        ${isGenesis ? '🌱' : '⛓️'} BLOCK #${block.index}
+                        ${isGenesis ? '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-left: 8px;">GENESIS</span>' : ''}
+                    </div>
+                    <div class="block-status" style="background: ${isVerified ? '#10b981' : '#f59e0b'};">
+                        ${isVerified ? '✅ VERIFIED & SIGNED' : '⏳ PENDING VERIFICATION'}
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-top: 20px;">
+                    <div class="block-data" style="background: rgba(255, 255, 255, 0.6); padding: 16px; border-radius: 8px;">
+                        <div class="data-label">📝 Data</div>
+                        <div class="data-value" style="margin-top: 8px; word-break: break-word; line-height: 1.5;">${this.escapeHtml(block.data)}</div>
+                    </div>
+                    
+                    <div class="block-data" style="background: rgba(255, 255, 255, 0.6); padding: 16px; border-radius: 8px;">
+                        <div class="data-label">🔐 Hash</div>
+                        <div class="data-value" style="margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all;">${block.hash}</div>
+                    </div>
+                    
+                    <div class="block-data" style="background: rgba(255, 255, 255, 0.6); padding: 16px; border-radius: 8px;">
+                        <div class="data-label">🔗 Previous Hash</div>
+                        <div class="data-value" style="margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all; color: ${block.prevHash ? 'var(--text-primary)' : '#f59e0b'};">
+                            ${block.prevHash || '🌱 Genesis Block (No Previous Hash)'}
+                        </div>
+                    </div>
+                    
+                    <div class="block-data" style="background: rgba(255, 255, 255, 0.6); padding: 16px; border-radius: 8px;">
+                        <div class="data-label">⏰ Timestamp</div>
+                        <div class="data-value" style="margin-top: 8px;">${timestamp}</div>
+                    </div>
+                    
+                    <div class="block-data" style="background: rgba(255, 255, 255, 0.6); padding: 16px; border-radius: 8px;">
+                        <div class="data-label">🔢 Nonce</div>
+                        <div class="data-value" style="margin-top: 8px; font-family: 'JetBrains Mono', monospace;">${(block.nonce || 0).toLocaleString()}</div>
+                    </div>
+                </div>
             </div>
         `;
 
@@ -446,15 +532,21 @@ class BlockchainDashboard {
     }
 
     updateConnectionStatus(connected) {
-        const statusElement = document.getElementById('system-status');
-        if (statusElement) {
+        const systemStatus = document.getElementById('system-status');
+        const connectionStatus = document.getElementById('connection-status');
+        
+        if (systemStatus) {
             if (connected) {
-                statusElement.textContent = '🟢 ONLINE';
-                statusElement.style.color = '#10b981';
+                systemStatus.textContent = '🟢 ONLINE';
+                systemStatus.style.color = '#10b981';
             } else {
-                statusElement.textContent = '🔴 OFFLINE';
-                statusElement.style.color = '#ef4444';
+                systemStatus.textContent = '🔴 OFFLINE';
+                systemStatus.style.color = '#ef4444';
             }
+        }
+        
+        if (connectionStatus) {
+            connectionStatus.textContent = connected ? 'Online' : 'Offline';
         }
     }
 
