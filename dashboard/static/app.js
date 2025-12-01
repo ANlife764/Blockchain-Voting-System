@@ -478,20 +478,53 @@ class BlockchainDashboard {
         const originalText = exportBtn.innerHTML;
         
         exportBtn.innerHTML = '<div class="loading-spinner"></div> Generating...';
+        exportBtn.disabled = true;
         
         try {
             const response = await fetch(`${this.baseURL}/api/export/audit`);
-            if (!response.ok) throw new Error('Export failed');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Export failed' }));
+                throw new Error(errorData.error || 'Export failed');
+            }
             
-            const result = await response.json();
-            console.log('Export result:', result);
-            this.showSuccess(`Audit report "${result.filename}" generated successfully`);
+            // Check if response is PDF
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/pdf')) {
+                // Get filename from Content-Disposition header or use default
+                const contentDisposition = response.headers.get('content-disposition');
+                let filename = 'election_audit_report.pdf';
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                    if (filenameMatch && filenameMatch[1]) {
+                        filename = filenameMatch[1].replace(/['"]/g, '');
+                    }
+                }
+                
+                // Create blob and download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                this.showSuccess(`Audit report "${filename}" downloaded successfully`);
+            } else {
+                // Handle JSON response (fallback)
+                const result = await response.json();
+                this.showSuccess(`Audit report "${result.filename || 'report'}" generated successfully`);
+            }
             
         } catch (error) {
             console.error('Error exporting audit:', error);
             this.showError('Failed to generate audit report: ' + error.message);
         } finally {
             exportBtn.innerHTML = originalText;
+            exportBtn.disabled = false;
         }
     }
 
